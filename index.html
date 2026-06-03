@@ -77,6 +77,45 @@ body{
 .sync-ok  {color:#34d399;background:rgba(52,211,153,.1);border-color:rgba(52,211,153,.3);}
 .sync-err {color:#f87171;background:rgba(248,113,113,.1);border-color:rgba(248,113,113,.3);}
 .sync-ing {color:#fbbf24;background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.3);}
+.journal-btn{
+  font-family:'Noto Sans KR',sans-serif;font-size:12px;font-weight:600;
+  background:linear-gradient(135deg,#059669,#047857);
+  color:#fff;border:none;border-radius:6px;padding:5px 14px;cursor:pointer;
+  transition:all .18s;box-shadow:0 2px 6px rgba(5,150,105,.3);
+}
+.journal-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(5,150,105,.4);}
+.journal-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;
+  align-items:center;justify-content:center;backdrop-filter:blur(3px);
+}
+.journal-overlay.open{display:flex;}
+.journal-box{
+  background:#fff;border:1px solid var(--border);border-radius:14px;
+  padding:26px 28px;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto;
+  box-shadow:0 24px 70px rgba(0,0,0,.2);
+}
+.journal-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:18px;}
+.journal-section{margin-bottom:14px;}
+.journal-label{font-size:12px;font-weight:700;color:var(--text2);margin-bottom:5px;display:block;}
+.journal-textarea{
+  width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:7px;
+  font-family:'Noto Sans KR',sans-serif;font-size:13px;color:var(--text);
+  resize:vertical;min-height:60px;outline:none;transition:border-color .15s;
+}
+.journal-textarea:focus{border-color:#059669;}
+.journal-preview{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:7px;padding:10px 12px;margin-bottom:6px;
+}
+.jp-row{display:flex;gap:8px;margin-bottom:4px;font-size:12px;line-height:1.6;}
+.jp-label{color:var(--text3);white-space:nowrap;min-width:80px;font-weight:600;}
+.jp-val{color:var(--text);}
+.journal-btns{display:flex;gap:9px;justify-content:flex-end;margin-top:18px;}
+.journal-dl-btn{
+  background:#059669;border:none;color:#fff;padding:8px 20px;border-radius:7px;
+  cursor:pointer;font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:700;transition:all .15s;
+}
+.journal-dl-btn:hover{background:#047857;}
 
 /* ══════════════ 헤더 ══════════════ */
 .header{
@@ -613,6 +652,7 @@ body{
     <span class="date-badge" id="dateBadge"></span>
     <button class="sync-btn" onclick="openGistSettings()">🔗 Gist 설정</button>
     <button class="sync-btn" onclick="manualRefresh()" title="Gist에서 최신 데이터 불러오기">🔄</button>
+    <button class="journal-btn" onclick="openJournal()">📋 업무일지</button>
     <button class="save-btn" onclick="saveAll()">💾 저장 · 동기화</button>
   </div>
 </div>
@@ -629,7 +669,7 @@ body{
       </div>
     </div>
     <div class="qbar">
-      <input class="qinput" id="todoInput" placeholder="할 일 입력 후 Enter…" onkeydown="qa('todo',event)">
+      <input class="qinput" id="todoInput" placeholder="할 일 입력 후 Enter…" onkeydown="qa('todo',event)" autocomplete="off">
       <select class="qsel" id="todoPri">
         <option value="높음">🔴 높음</option>
         <option value="보통" selected>🟡 보통</option>
@@ -656,7 +696,7 @@ body{
       <div class="pulse-wrap" id="issuePulse" style="display:none"><i></i><b></b></div>
     </div>
     <div class="qbar" style="background:#fffdf0;border-bottom-color:#fde68a;">
-      <input class="qinput" id="issueInput" placeholder="특이사항 입력 후 Enter — 해결 전까지 계속 표시" onkeydown="qa('issue',event)">
+      <input class="qinput" id="issueInput" placeholder="특이사항 입력 후 Enter — 해결 전까지 계속 표시" onkeydown="qa('issue',event)" autocomplete="off">
     </div>
     <div class="panel-body" id="issueList"></div>
   </div>
@@ -670,7 +710,7 @@ body{
       </div>
     </div>
     <div class="qbar" style="background:#fff8f8;border-bottom-color:#fecaca;">
-      <input class="qinput" id="csInput" placeholder="CS 내용 입력 후 Enter…" onkeydown="qa('cs',event)">
+      <input class="qinput" id="csInput" placeholder="CS 내용 입력 후 Enter…" onkeydown="qa('cs',event)" autocomplete="off">
       <select class="qsel" id="csStatus">
         <option value="처리중">🟡 처리중</option>
         <option value="확인중">🔵 확인중</option>
@@ -690,7 +730,7 @@ body{
       </div>
     </div>
     <div class="qbar" style="background:#f8fbff;border-bottom-color:#bfdbfe;">
-      <input class="qinput" id="schedInput" placeholder="일정명 입력 후 Enter…" onkeydown="qa('sched',event)" style="flex:2">
+      <input class="qinput" id="schedInput" placeholder="일정명 입력 후 Enter…" onkeydown="qa('sched',event)" style="flex:2" autocomplete="off">
       <input type="date" class="qsel" id="schedDate" style="font-family:'JetBrains Mono',monospace;font-size:11px;">
     </div>
     <div class="panel-body" id="schedList"></div>
@@ -765,6 +805,54 @@ body{
   </div>
 </div>
 
+<!-- 업무일지 팝업 -->
+<div class="journal-overlay" id="journalOverlay">
+  <div class="journal-box">
+    <div class="journal-title">📋 업무일지 작성 · 다운로드</div>
+
+    <!-- 자동 채워지는 내용 미리보기 -->
+    <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:6px;">📌 자동 입력 항목</div>
+    <div class="journal-preview" id="journalPreview"></div>
+
+    <!-- 오늘의 변수/이슈 추가 입력 -->
+    <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px;">✏️ 추가 입력</div>
+
+    <div class="journal-section">
+      <label class="journal-label">원인</label>
+      <textarea class="journal-textarea" id="jCause" placeholder="이슈 발생 원인…" rows="2"></textarea>
+    </div>
+    <div class="journal-section">
+      <label class="journal-label">대응</label>
+      <textarea class="journal-textarea" id="jResponse" placeholder="대응 내용…" rows="2"></textarea>
+    </div>
+    <div class="journal-section">
+      <label class="journal-label">다음엔</label>
+      <textarea class="journal-textarea" id="jNextTime" placeholder="재발 방지 방안…" rows="2"></textarea>
+    </div>
+    <div class="journal-section">
+      <label class="journal-label">잘한 것</label>
+      <textarea class="journal-textarea" id="jGood" placeholder="오늘 잘한 것…" rows="2"></textarea>
+    </div>
+    <div class="journal-section">
+      <label class="journal-label">아쉬운 것</label>
+      <textarea class="journal-textarea" id="jBad" placeholder="오늘 아쉬운 것…" rows="2"></textarea>
+    </div>
+    <div class="journal-section">
+      <label class="journal-label">배운 것</label>
+      <textarea class="journal-textarea" id="jLearned" placeholder="오늘 배운 것…" rows="2"></textarea>
+    </div>
+    <div class="journal-section">
+      <label class="journal-label">내일 챙길 것</label>
+      <textarea class="journal-textarea" id="jTomorrow" placeholder="내일 챙길 것…" rows="2"></textarea>
+    </div>
+
+    <div class="journal-btns">
+      <button class="btn-cancel" onclick="closeJournal()">취소</button>
+      <button class="journal-dl-btn" onclick="downloadJournal()">📥 엑셀 다운로드</button>
+    </div>
+  </div>
+</div>
+
 <!-- 확인 팝업 -->
 <div class="confirm-overlay" id="confirmOverlay">
   <div class="confirm-box">
@@ -778,6 +866,7 @@ body{
 
 <div class="toast" id="toast"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ── 상태 ── */
 const SKEY='gfs_v5';
@@ -931,6 +1020,7 @@ function confirmOk(){if(pendingAction)pendingAction();closeConfirm();}
 document.addEventListener('click',e=>{
   if(e.target===document.getElementById('confirmOverlay'))closeConfirm();
   if(e.target===document.getElementById('gistOverlay'))closeGistSettings();
+  if(e.target===document.getElementById('journalOverlay'))closeJournal();
 });
 
 /* ── 입력 ── */
@@ -1173,9 +1263,164 @@ function askDelSched(idx){openConfirm(`<strong>"${esc(S.schedules[idx].title)}"<
 function askDelMemo(idx){openConfirm(`메모를 삭제하시겠습니까?`,'btn-ok-danger',()=>{S.memos.splice(idx,1);render();autoSync();});}
 function togglePin(idx){S.memos[idx].pin=!S.memos[idx].pin;render();autoSync();}
 
-/* ── 단축키 ── */
+/* ── 업무일지 ── */
+function openJournal(){
+  // 미리보기 채우기
+  const today=new Date();
+  const dw=['일','월','화','수','목','금','토'];
+  const dateStr=`${today.getFullYear()}. ${z(today.getMonth()+1)}. ${z(today.getDate())}  ${dw[today.getDay()]}`;
+
+  const todos=S.todos.filter(t=>!t.done);
+  const doneTodos=S.todos.filter(t=>t.done);
+  const allTodos=[...doneTodos,...todos];
+  const issues=S.issues.filter(i=>!i.resolved);
+
+  let html=`<div class="jp-row"><span class="jp-label">📅 날짜</span><span class="jp-val">${dateStr}</span></div>`;
+  html+=`<div class="jp-row"><span class="jp-label">✅ 할 일</span><span class="jp-val">${allTodos.length}건 (완료 ${doneTodos.length}건)</span></div>`;
+  if(issues.length) html+=`<div class="jp-row"><span class="jp-label">⚠ 이슈</span><span class="jp-val">${issues.map(i=>i.title).join(' / ')}</span></div>`;
+  if(S.cs.length) html+=`<div class="jp-row"><span class="jp-label">📞 CS</span><span class="jp-val">${S.cs.map(c=>c.title).join(' / ')}</span></div>`;
+
+  document.getElementById('journalPreview').innerHTML=html;
+  document.getElementById('journalOverlay').classList.add('open');
+}
+function closeJournal(){
+  document.getElementById('journalOverlay').classList.remove('open');
+}
+
+function downloadJournal(){
+  const today=new Date();
+  const dw=['일','월','화','수','목','금','토'];
+  const mm=z(today.getMonth()+1);
+  const dd=z(today.getDate());
+  const sheetName=`${mm}-${dd}`;
+  const dateLabel=`${today.getFullYear()}. ${mm}. ${dd}  ${dw[today.getDay()]}`;
+
+  const todos=S.todos;
+  const doneTodos=todos.filter(t=>t.done);
+  const pendingTodos=todos.filter(t=>!t.done);
+  const allTodos=[...doneTodos,...pendingTodos];
+
+  const issues=S.issues.filter(i=>!i.resolved);
+  const issueText=[
+    ...issues.map(i=>i.title),
+    ...S.cs.map(c=>`[${c.status}] ${c.title}`)
+  ].join('\n');
+
+  // 시트 데이터 구성
+  const rows=[];
+  // 1행 여백
+  rows.push(['','','','','','']);
+  // 2행 헤더
+  rows.push(['업무일지','','','',dateLabel,'']);
+  // 3행 섹션
+  rows.push(['  오늘 한 일','','','','','']);
+  // 4행 컬럼
+  rows.push(['No','분류','업무 내용','세부 내용','상태','비고']);
+  // 5~16행 할 일
+  for(let i=0;i<12;i++){
+    if(i<allTodos.length){
+      const t=allTodos[i];
+      rows.push([i+1, t.priority||'', t.text||'', '', t.done?'완료':'진행중', '']);
+    } else {
+      rows.push([i+1,'','','','','']);
+    }
+  }
+  // 17행 변수/이슈
+  rows.push(['  오늘의 변수 / 이슈','','','','','']);
+  rows.push(['상황','',issueText,'','','']);
+  rows.push(['','','','','','']);
+  rows.push(['원인','',document.getElementById('jCause').value,'','','']);
+  rows.push(['','','','','','']);
+  rows.push(['대응','',document.getElementById('jResponse').value,'','','']);
+  rows.push(['','','','','','']);
+  rows.push(['다음엔','',document.getElementById('jNextTime').value,'','','']);
+  rows.push(['','','','','','']);
+  // 오늘 하루
+  rows.push(['  오늘 하루','','','','','']);
+  rows.push(['잘한 것','',document.getElementById('jGood').value,'','','']);
+  rows.push(['','','','','','']);
+  rows.push(['아쉬운 것','',document.getElementById('jBad').value,'','','']);
+  rows.push(['','','','','','']);
+  rows.push(['배운 것','',document.getElementById('jLearned').value,'','','']);
+  rows.push(['','','','','','']);
+  rows.push(['내일 챙길 것','',document.getElementById('jTomorrow').value,'','','']);
+  rows.push(['','','','','','']);
+
+  // 워크북 생성
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+
+  // 열 너비
+  ws['!cols']=[{wch:5},{wch:12},{wch:30},{wch:40},{wch:10},{wch:19}];
+
+  // 병합셀
+  ws['!merges']=[
+    {s:{r:0,c:0},e:{r:0,c:5}}, // 1행 전체
+    {s:{r:1,c:0},e:{r:1,c:3}}, // 업무일지
+    {s:{r:1,c:4},e:{r:1,c:5}}, // 날짜
+    {s:{r:2,c:0},e:{r:2,c:5}}, // 오늘 한 일
+    {s:{r:16,c:0},e:{r:16,c:5}}, // 변수/이슈
+    {s:{r:17,c:0},e:{r:18,c:1}}, // 상황 라벨
+    {s:{r:17,c:2},e:{r:18,c:5}}, // 상황 값
+    {s:{r:19,c:0},e:{r:20,c:1}}, // 원인 라벨
+    {s:{r:19,c:2},e:{r:20,c:5}}, // 원인 값
+    {s:{r:21,c:0},e:{r:22,c:1}}, // 대응 라벨
+    {s:{r:21,c:2},e:{r:22,c:5}}, // 대응 값
+    {s:{r:23,c:0},e:{r:24,c:1}}, // 다음엔 라벨
+    {s:{r:23,c:2},e:{r:24,c:5}}, // 다음엔 값
+    {s:{r:25,c:0},e:{r:25,c:5}}, // 오늘 하루
+    {s:{r:26,c:0},e:{r:27,c:1}}, // 잘한것 라벨
+    {s:{r:26,c:2},e:{r:27,c:5}}, // 잘한것 값
+    {s:{r:28,c:0},e:{r:29,c:1}}, // 아쉬운것
+    {s:{r:28,c:2},e:{r:29,c:5}},
+    {s:{r:30,c:0},e:{r:31,c:1}}, // 배운것
+    {s:{r:30,c:2},e:{r:31,c:5}},
+    {s:{r:32,c:0},e:{r:33,c:1}}, // 내일챙길것
+    {s:{r:32,c:2},e:{r:33,c:5}},
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+  // 일정 시트
+  const schedRows=[['일정 관리','','','','']];
+  schedRows.push(['날짜','요일','거래처','내용','완료']);
+  const dayNames=['일','월','화','수','목','금','토'];
+  S.schedules.forEach(s=>{
+    const d=new Date(s.date);
+    const mm2=z(d.getMonth()+1);
+    const dd2=z(d.getDate());
+    schedRows.push([`${mm2}-${dd2}`, dayNames[d.getDay()], '', s.title, '예정']);
+  });
+  const wsS=XLSX.utils.aoa_to_sheet(schedRows);
+  wsS['!cols']=[{wch:8},{wch:5},{wch:15},{wch:40},{wch:8}];
+  XLSX.utils.book_append_sheet(wb, wsS, '일정');
+
+  // 실수 기록 시트 (이슈만)
+  const mistakeRows=[['실수 기록','','','',`${today.getFullYear()}년 ${mm}월`,'']];
+  mistakeRows.push(['날짜','실수 유형','상황 요약','원인','수습','재발']);
+  issues.forEach(i=>{
+    mistakeRows.push([
+      `${today.getFullYear()}-${mm}-${dd}`,
+      '이슈',
+      i.title,
+      document.getElementById('jCause').value||'',
+      '진행중',
+      '첫발생'
+    ]);
+  });
+  const wsM=XLSX.utils.aoa_to_sheet(mistakeRows);
+  wsM['!cols']=[{wch:12},{wch:12},{wch:35},{wch:35},{wch:8},{wch:8}];
+  XLSX.utils.book_append_sheet(wb, wsM, '실수 기록');
+
+  // 파일명: 업무일지_YYYY_MM.xlsx
+  const fileName=`업무일지_${today.getFullYear()}_${mm}.xlsx`;
+  XLSX.writeFile(wb, fileName);
+
+  closeJournal();
+  showToast(`📥 ${fileName} 다운로드 완료!`);
+}
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeConfirm();closeGistSettings();return;}
+  if(e.key==='Escape'){closeConfirm();closeGistSettings();closeJournal();return;}
   if(e.shiftKey&&e.key==='N'){e.preventDefault();document.getElementById('issueInput').focus();}
   if(e.shiftKey&&e.key==='T'){e.preventDefault();document.getElementById('todoInput').focus();}
   if(e.shiftKey&&e.key==='M'){e.preventDefault();document.getElementById('memoInput').focus();}
