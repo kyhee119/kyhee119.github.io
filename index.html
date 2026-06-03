@@ -185,23 +185,49 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);}
 .cal-dow{padding:9px 4px;text-align:center;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.08em;background:var(--surface2);border-bottom:1.5px solid var(--border);}
 .cal-dow:first-child{color:#b91c1c;} .cal-dow:last-child{color:#1d4ed8;}
-.cal-cell{min-height:90px;padding:7px 8px;border-right:1px solid var(--surface3);border-bottom:1px solid var(--surface3);background:#fff;transition:background .12s;}
+
+/* 달력 셀 — 점 방식 */
+.cal-cell{min-height:68px;padding:7px 6px;border-right:1px solid var(--surface3);border-bottom:1px solid var(--surface3);background:#fff;transition:background .12s;cursor:pointer;position:relative;}
 .cal-cell:nth-child(7n){border-right:none;}
-.cal-cell:hover{background:#f8fafc;}
-.cal-cell.other-month{background:#fafafa;}
-.cal-cell.other-month .cal-day-num{color:var(--text4);}
+.cal-cell:hover{background:#f0f7ff;}
+.cal-cell.other-month{background:#fafafa;opacity:.5;}
 .cal-cell.today{background:#eff6ff;}
+.cal-cell.selected{background:#dbeafe;outline:2px solid #3b82f6;outline-offset:-2px;border-radius:0;}
 .cal-cell.today .cal-day-num{background:#1d4ed8;color:#fff;font-weight:800;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;}
 .cal-day-num{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;}
 .cal-cell:nth-child(7n+1) .cal-day-num{color:#b91c1c;}
 .cal-cell:nth-child(7n) .cal-day-num{color:#1e40af;}
 .cal-cell.today:nth-child(7n+1) .cal-day-num,.cal-cell.today:nth-child(7n) .cal-day-num{color:#fff;}
-.cal-event{font-size:10px;font-weight:600;padding:2px 6px;border-radius:3px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.cal-ev-d0{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;}
-.cal-ev-d1{background:#fff7ed;color:#9a3412;border:1px solid #fdba74;}
-.cal-ev-d3{background:#fef9c3;color:#854d0e;border:1px solid #fde047;}
-.cal-ev-d7{background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;}
-.cal-ev-far{background:var(--surface3);color:var(--text3);border:1px solid var(--border);}
+
+/* 점 + +N 표시 */
+.cal-dot-row{display:flex;align-items:center;gap:3px;margin-top:3px;}
+.cal-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.cal-dot.d0{background:#ef4444;}
+.cal-dot.d1{background:#f97316;}
+.cal-dot.d3{background:#eab308;}
+.cal-dot.d7{background:#3b82f6;}
+.cal-dot.far{background:#94a3b8;}
+.cal-more{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:var(--text3);margin-left:1px;}
+
+/* 클릭시 일정 리스트 */
+.cal-detail{background:var(--surface);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:14px 16px;display:none;box-shadow:var(--shadow-sm);}
+.cal-detail.open{display:block;}
+.cal-detail-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.cal-detail-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;margin-bottom:6px;border:1.5px solid;}
+.cal-detail-item:last-child{margin-bottom:0;}
+.cal-detail-item.di-d0{background:#fef2f2;border-color:#fca5a5;}
+.cal-detail-item.di-d1{background:#fff7ed;border-color:#fdba74;}
+.cal-detail-item.di-d3{background:#fefce8;border-color:#fde047;}
+.cal-detail-item.di-d7{background:#eff6ff;border-color:#93c5fd;}
+.cal-detail-item.di-far{background:var(--surface2);border-color:var(--border);}
+.cal-detail-badge{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:800;padding:2px 8px;border-radius:4px;flex-shrink:0;min-width:52px;text-align:center;}
+.di-d0 .cal-detail-badge{background:#fee2e2;color:#991b1b;border:1px solid #f87171;}
+.di-d1 .cal-detail-badge{background:#ffedd5;color:#9a3412;border:1px solid #fb923c;}
+.di-d3 .cal-detail-badge{background:#fef9c3;color:#854d0e;border:1px solid #fde047;}
+.di-d7 .cal-detail-badge{background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;}
+.di-far .cal-detail-badge{background:var(--surface3);color:var(--text3);border:1px solid var(--border);}
+.cal-detail-name{flex:1;font-size:13px;font-weight:600;color:var(--text);}
+.cal-detail-empty{text-align:center;color:var(--text4);font-size:12px;padding:16px 0;}
 
 /* 팝업 공통 */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(3px);}
@@ -269,9 +295,17 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
   .chk{width:20px;height:20px;}
   .resolve-btn{padding:5px 12px;font-size:12px;}
   .x{font-size:15px;padding:2px 6px;}
-  .cal-cell{min-height:60px;padding:4px 5px;}
-  .cal-day-num,.cal-event{font-size:9px;}
+  .cal-cell{min-height:44px;padding:5px 3px;}
+  .cal-day-num{font-size:11px;width:20px;height:20px;}
+  .cal-cell.today .cal-day-num{width:20px;height:20px;font-size:11px;}
+  .cal-dot{width:5px;height:5px;}
+  .cal-more{font-size:8px;}
   .cal-title{font-size:13px;}
+  .cal-nav{padding:4px 10px;font-size:12px;}
+  .cal-today-btn{padding:4px 10px;font-size:11px;}
+  .cal-detail{padding:12px 14px;}
+  .cal-detail-title{font-size:12px;}
+  .cal-detail-name{font-size:12px;}
   #memoList{grid-template-columns:1fr !important;}
   #journalBox{width:95vw;padding:18px 16px;}
   #gistBox{width:95vw;}
@@ -389,6 +423,7 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
     </div>
     <div class="cal-grid" id="calBody"></div>
   </div>
+  <div class="cal-detail" id="calDetail"></div>
 </div>
 
 <!-- 확인 팝업 -->
@@ -696,6 +731,8 @@ function renderMemos(){
 }
 
 /* ════════════════ 달력 ════════════════ */
+let selectedDateStr = null;
+
 function renderCalendar(){
   const today=new Date();today.setHours(0,0,0,0);
   const yr=calYear,mo=calMonth;
@@ -703,37 +740,124 @@ function renderCalendar(){
   const firstDay=new Date(yr,mo,1).getDay();
   const lastDate=new Date(yr,mo+1,0).getDate();
   const prevLast=new Date(yr,mo,0).getDate();
+
+  // 날짜별 일정 맵
   const evMap={};
   S.schedules.forEach(s=>{
     const d=new Date(s.date);d.setHours(0,0,0,0);
     const diff=Math.round((d-today)/86400000);
     if(!evMap[s.date])evMap[s.date]=[];
-    evMap[s.date].push({title:s.title,diff});
+    evMap[s.date].push({title:s.title,diff,date:s.date});
   });
+
   const body=document.getElementById('calBody');body.innerHTML='';
   const totalCells=Math.ceil((firstDay+lastDate)/7)*7;
+
   for(let i=0;i<totalCells;i++){
     const cell=document.createElement('div');cell.className='cal-cell';
     let day,dateStr,isOther=false;
-    if(i<firstDay){day=prevLast-(firstDay-1-i);const pm=mo===0?yr-1:yr;const pmm=mo===0?12:mo;dateStr=`${pm}-${z(pmm)}-${z(day)}`;isOther=true;}
-    else if(i>=firstDay+lastDate){day=i-(firstDay+lastDate)+1;const nm=mo===11?yr+1:yr;const nmm=mo===11?1:mo+2;dateStr=`${nm}-${z(nmm)}-${z(day)}`;isOther=true;}
-    else{day=i-firstDay+1;dateStr=`${yr}-${z(mo+1)}-${z(day)}`;}
+    if(i<firstDay){
+      day=prevLast-(firstDay-1-i);
+      const pm=mo===0?yr-1:yr;const pmm=mo===0?12:mo;
+      dateStr=`${pm}-${z(pmm)}-${z(day)}`;isOther=true;
+    }else if(i>=firstDay+lastDate){
+      day=i-(firstDay+lastDate)+1;
+      const nm=mo===11?yr+1:yr;const nmm=mo===11?1:mo+2;
+      dateStr=`${nm}-${z(nmm)}-${z(day)}`;isOther=true;
+    }else{
+      day=i-firstDay+1;dateStr=`${yr}-${z(mo+1)}-${z(day)}`;
+    }
+
     if(isOther)cell.classList.add('other-month');
     const cellDate=new Date(dateStr);cellDate.setHours(0,0,0,0);
     if(cellDate.getTime()===today.getTime())cell.classList.add('today');
+    if(dateStr===selectedDateStr)cell.classList.add('selected');
+
+    // 날짜 숫자
     cell.innerHTML=`<div class="cal-day-num">${day}</div>`;
+
+    // 점 + +N 표시
     const evs=evMap[dateStr]||[];
-    evs.slice(0,3).forEach(ev=>{
-      const span=document.createElement('div');
-      const dc=ev.diff===0?'cal-ev-d0':ev.diff===1?'cal-ev-d1':ev.diff<=3?'cal-ev-d3':ev.diff<=7?'cal-ev-d7':'cal-ev-far';
-      span.className=`cal-event ${dc}`;span.textContent=ev.title;cell.appendChild(span);
-    });
-    if(evs.length>3){const m=document.createElement('div');m.style.cssText='font-size:9px;color:var(--text3);padding:0 5px;font-weight:600;';m.textContent=`+${evs.length-3}개 더`;cell.appendChild(m);}
+    if(evs.length>0){
+      const row=document.createElement('div');row.className='cal-dot-row';
+      // 첫번째 일정 점
+      const dot=document.createElement('div');
+      const diff=evs[0].diff;
+      const dotCls=diff===0?'d0':diff===1?'d1':diff<=3?'d3':diff<=7?'d7':'far';
+      dot.className=`cal-dot ${dotCls}`;
+      row.appendChild(dot);
+      // +N 표시
+      if(evs.length>1){
+        const more=document.createElement('span');
+        more.className='cal-more';
+        more.textContent=`+${evs.length-1}`;
+        row.appendChild(more);
+      }
+      cell.appendChild(row);
+    }
+
+    // 클릭 이벤트
+    cell.addEventListener('click',()=>selectDate(dateStr,evMap[dateStr]||[]));
     body.appendChild(cell);
   }
+
+  // 선택된 날짜 리스트 업데이트
+  if(selectedDateStr)renderDateDetail(selectedDateStr,evMap[selectedDateStr]||[]);
 }
-function calMove(dir){calMonth+=dir;if(calMonth>11){calMonth=0;calYear++;}if(calMonth<0){calMonth=11;calYear--;}renderCalendar();}
-function calGoToday(){const t=new Date();calYear=t.getFullYear();calMonth=t.getMonth();renderCalendar();}
+
+function selectDate(dateStr, evs){
+  // 같은 날 다시 클릭하면 닫기
+  if(selectedDateStr===dateStr){
+    selectedDateStr=null;
+    document.getElementById('calDetail').classList.remove('open');
+    document.querySelectorAll('.cal-cell.selected').forEach(c=>c.classList.remove('selected'));
+    return;
+  }
+  selectedDateStr=dateStr;
+  document.querySelectorAll('.cal-cell.selected').forEach(c=>c.classList.remove('selected'));
+  renderCalendar();
+  renderDateDetail(dateStr,evs);
+}
+
+function renderDateDetail(dateStr, evs){
+  const detail=document.getElementById('calDetail');
+  const d=new Date(dateStr);
+  const dw=['일','월','화','수','목','금','토'];
+  const title=`${d.getMonth()+1}월 ${d.getDate()}일 (${dw[d.getDay()]})`;
+
+  if(!evs.length){
+    detail.innerHTML=`<div class="cal-detail-title">📅 ${title}</div><div class="cal-detail-empty">등록된 일정이 없어요</div>`;
+  }else{
+    const today=new Date();today.setHours(0,0,0,0);
+    let html=`<div class="cal-detail-title">📅 ${title} — ${evs.length}개 일정</div>`;
+    evs.forEach(ev=>{
+      const diff=ev.diff;
+      const cls=diff===0?'di-d0':diff===1?'di-d1':diff<=3?'di-d3':diff<=7?'di-d7':'di-far';
+      const badge=diff===0?'D-DAY':diff<0?`D+${Math.abs(diff)}`:`D-${diff}`;
+      html+=`<div class="cal-detail-item ${cls}">
+        <span class="cal-detail-badge">${badge}</span>
+        <span class="cal-detail-name">${esc(ev.title)}</span>
+      </div>`;
+    });
+    detail.innerHTML=html;
+  }
+  detail.classList.add('open');
+}
+
+function calMove(dir){
+  calMonth+=dir;
+  if(calMonth>11){calMonth=0;calYear++;}
+  if(calMonth<0){calMonth=11;calYear--;}
+  selectedDateStr=null;
+  document.getElementById('calDetail').classList.remove('open');
+  renderCalendar();
+}
+function calGoToday(){
+  const t=new Date();calYear=t.getFullYear();calMonth=t.getMonth();
+  selectedDateStr=null;
+  document.getElementById('calDetail').classList.remove('open');
+  renderCalendar();
+}
 
 /* ════════════════ 액션 ════════════════ */
 function toggleTodo(idx){
