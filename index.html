@@ -29,6 +29,53 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:13px;min-height:100vh;}
 
+/* PIN 잠금 화면 */
+.lock-screen{
+  display:none;position:fixed;inset:0;z-index:9999;
+  background:#ffffff;
+  align-items:center;justify-content:center;flex-direction:column;
+}
+.lock-screen.show{display:flex;}
+.lock-logo{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:#1d4ed8;letter-spacing:.1em;margin-bottom:6px;}
+.lock-sub{font-size:12px;color:#9ca3af;margin-bottom:48px;letter-spacing:.05em;}
+.lock-box{background:#f7f8fa;border:1.5px solid #e5e7eb;border-radius:14px;padding:32px 36px;width:340px;max-width:90vw;display:flex;flex-direction:column;gap:0;box-shadow:0 4px 24px rgba(0,0,0,.08);}
+.lock-box-title{font-size:14px;font-weight:600;color:#374151;margin-bottom:20px;text-align:center;}
+.lock-box-title.error{color:#dc2626;animation:shake .3s ease;}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.lock-input{
+  width:100%;background:#ffffff;border:1.5px solid #d1d5db;
+  color:#111827;border-radius:8px;padding:12px 16px;
+  font-size:16px;font-family:'Noto Sans KR',sans-serif;
+  outline:none;text-align:center;letter-spacing:.15em;
+  transition:border-color .15s;margin-bottom:14px;
+}
+.lock-input:focus{border-color:#3b82f6;}
+.lock-input.error{border-color:#dc2626;}
+.lock-submit{
+  width:100%;background:#1d4ed8;border:none;color:#fff;
+  font-weight:700;font-size:14px;border-radius:8px;
+  padding:12px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;
+  transition:all .15s;
+}
+.lock-submit:hover{background:#1e40af;}
+.lock-attempt{font-size:11px;color:#dc2626;font-family:'JetBrains Mono',monospace;text-align:center;margin-top:10px;min-height:16px;}
+.lock-master-btn{font-size:12px;color:#9ca3af;background:none;border:none;cursor:pointer;font-family:'Noto Sans KR',sans-serif;text-decoration:underline;margin-top:12px;text-align:center;}
+.lock-master-btn:hover{color:#6b7280;}
+.master-section{display:none;margin-top:16px;padding-top:16px;border-top:1px solid #e5e7eb;}
+.master-section.show{display:block;}
+.master-section .lock-input{margin-bottom:10px;}
+.pin-setup-step{font-size:11px;color:#9ca3af;text-align:center;margin-bottom:8px;font-family:'JetBrains Mono',monospace;min-height:14px;}
+
+/* 눈 모양 토글 */
+.input-wrap{position:relative;margin-bottom:14px;}
+.input-wrap .lock-input{margin-bottom:0;}
+.eye-btn{
+  position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  background:none;border:none;cursor:pointer;color:#9ca3af;
+  font-size:16px;padding:2px;transition:color .15s;
+}
+.eye-btn:hover{color:#374151;}
+
 /* 헤더 */
 .header{background:#1e293b;padding:11px 22px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:300;box-shadow:0 2px 8px rgba(0,0,0,.18);}
 .hl,.hr{display:flex;align-items:center;gap:10px;}
@@ -314,6 +361,27 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
 </head>
 <body>
 
+<!-- PIN 잠금 화면 -->
+<div class="lock-screen" id="lockScreen">
+  <div class="lock-logo">GFS</div>
+  <div class="lock-sub">안성센터 업무 대시보드</div>
+  <div class="lock-box">
+    <div class="pin-setup-step" id="pinSetupStep"></div>
+    <div class="lock-box-title" id="lockTitle">비밀번호를 입력하세요</div>
+    <input type="password" class="lock-input" id="lockInput" placeholder="비밀번호" autocomplete="off" onkeydown="lockKeydown(event)">
+    <button class="lock-submit" onclick="processPin()">확인</button>
+    <div class="lock-attempt" id="lockAttempt"></div>
+    <button class="lock-master-btn" id="masterBtn" onclick="showMaster()" style="display:none">마스터키로 해제</button>
+    <div class="master-section" id="masterWrap">
+      <div class="input-wrap">
+        <input type="password" class="lock-input" id="masterInput" placeholder="마스터키 입력" autocomplete="off" onkeydown="if(event.key==='Enter')submitMaster()">
+        <button class="eye-btn" type="button" onclick="toggleEye()" id="eyeBtn">👁</button>
+      </div>
+      <button class="lock-submit" onclick="submitMaster()">마스터키로 해제</button>
+    </div>
+  </div>
+</div>
+
 <div class="header">
   <div class="hl">
     <span class="logo">GFS</span>
@@ -481,14 +549,10 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
 <!-- 업무일지 팝업 -->
 <div class="overlay" id="journalOverlay">
   <div class="popup-box" id="journalBox">
-    <div class="journal-title">📋 업무일지 작성 · 다운로드</div>
-    <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:6px;">📌 자동 입력 항목</div>
+    <div class="journal-title">📋 업무일지 다운로드</div>
+    <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:6px;">📌 자동 입력</div>
     <div class="journal-preview" id="journalPreview"></div>
-    <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px;">✏️ 추가 입력</div>
-    <div class="journal-section"><label class="journal-label">상황 (이슈 내용)</label><textarea class="journal-textarea" id="jSituation" placeholder="오늘 발생한 이슈 상황…" rows="2"></textarea></div>
-    <div class="journal-section"><label class="journal-label">원인</label><textarea class="journal-textarea" id="jCause" placeholder="이슈 발생 원인…" rows="2"></textarea></div>
-    <div class="journal-section"><label class="journal-label">대응</label><textarea class="journal-textarea" id="jResponse" placeholder="대응 내용…" rows="2"></textarea></div>
-    <div class="journal-section"><label class="journal-label">다음엔</label><textarea class="journal-textarea" id="jNextTime" placeholder="재발 방지 방안…" rows="2"></textarea></div>
+    <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px;">✏️ 오늘 하루</div>
     <div class="journal-section"><label class="journal-label">잘한 것</label><textarea class="journal-textarea" id="jGood" placeholder="오늘 잘한 것…" rows="2"></textarea></div>
     <div class="journal-section"><label class="journal-label">아쉬운 것</label><textarea class="journal-textarea" id="jBad" placeholder="오늘 아쉬운 것…" rows="2"></textarea></div>
     <div class="journal-section"><label class="journal-label">배운 것</label><textarea class="journal-textarea" id="jLearned" placeholder="오늘 배운 것…" rows="2"></textarea></div>
@@ -503,6 +567,196 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
 <div class="toast" id="toast"></div>
 
 <script>
+/* ════════════════ 잠금 ════════════════ */
+const PKEY='gfs_pin';
+const MKEY='gfs_master';
+const LOCK_TIMEOUT=30*60*1000;
+let pinAttempts=0;
+let lockTimer=null;
+let setupStep=0;
+let setupFirst='';
+
+function hashPin(p){
+  let h=0;for(let i=0;i<p.length;i++){h=((h<<5)-h)+p.charCodeAt(i);h|=0;}
+  return String(h);
+}
+
+function initLock(){
+  const pin=localStorage.getItem(PKEY);
+  if(!pin){
+    setupStep=1; setupFirst='';
+    showLockScreen('비밀번호를 새로 설정해주세요','STEP 1 / 2 — 새 비밀번호 입력');
+  } else {
+    showLockScreen('비밀번호를 입력하세요','');
+  }
+}
+
+function showLockScreen(title, step){
+  document.getElementById('lockTitle').textContent=title;
+  document.getElementById('lockTitle').classList.remove('error');
+  document.getElementById('pinSetupStep').textContent=step;
+  document.getElementById('lockInput').value='';
+  document.getElementById('lockInput').classList.remove('error');
+  document.getElementById('lockAttempt').textContent='';
+  document.getElementById('lockScreen').classList.add('show');
+  document.body.style.overflow='hidden';
+  setTimeout(()=>document.getElementById('lockInput').focus(),100);
+}
+
+function hideLockScreen(){
+  document.getElementById('lockScreen').classList.remove('show');
+  document.body.style.overflow='';
+  pinAttempts=0;
+  resetLockTimer();
+}
+
+function lockKeydown(e){if(e.key==='Enter')processPin();}
+
+function processPin(){
+  const input=document.getElementById('lockInput').value;
+  if(!input){shakeInput();return;}
+  const pin=localStorage.getItem(PKEY);
+
+  if(!pin){
+    // 설정 모드
+    if(setupStep===1){
+      if(input.length<4){showLockError('4자 이상 입력해주세요');return;}
+      setupFirst=input;
+      document.getElementById('lockInput').value='';
+      document.getElementById('pinSetupStep').textContent='STEP 2 / 2 — 비밀번호 확인';
+      document.getElementById('lockTitle').textContent='비밀번호를 다시 입력해주세요';
+      setupStep=2;
+    } else {
+      if(input===setupFirst){
+        localStorage.setItem(PKEY, hashPin(input));
+        // 마스터키 설정으로
+        document.getElementById('lockInput').value='';
+        document.getElementById('pinSetupStep').textContent='마스터키 설정';
+        document.getElementById('lockTitle').textContent='마스터키를 설정해주세요';
+        document.getElementById('masterBtn').style.display='none';
+        document.getElementById('masterWrap').classList.add('show');
+        document.getElementById('masterInput').placeholder='마스터키 (분실 시 비상 해제용)';
+        document.getElementById('masterInput').dataset.mode='setup';
+        document.getElementById('lockInput').style.display='none';
+        document.querySelector('.lock-submit').style.display='none';
+        setTimeout(()=>document.getElementById('masterInput').focus(),100);
+      } else {
+        setupStep=1; setupFirst='';
+        document.getElementById('lockInput').value='';
+        document.getElementById('pinSetupStep').textContent='STEP 1 / 2 — 새 비밀번호 입력';
+        showLockError('비밀번호가 일치하지 않아요. 다시 입력해주세요');
+      }
+    }
+  } else {
+    // 입력 모드
+    if(hashPin(input)===pin){
+      hideLockScreen();
+      initDashboard();
+    } else {
+      pinAttempts++;
+      document.getElementById('lockInput').value='';
+      shakeInput();
+      const remain=5-pinAttempts;
+      if(remain<=0){
+        document.getElementById('lockAttempt').textContent='5회 틀렸습니다. 마스터키로 해제하세요.';
+        document.getElementById('masterBtn').style.display='block';
+        document.getElementById('lockInput').disabled=true;
+        document.querySelector('.lock-submit').disabled=true;
+      } else {
+        document.getElementById('lockAttempt').textContent=`비밀번호가 틀렸습니다. (${pinAttempts}/5)`;
+        if(remain<=2) document.getElementById('masterBtn').style.display='block';
+      }
+    }
+  }
+}
+
+function shakeInput(){
+  const el=document.getElementById('lockInput');
+  el.classList.add('error');
+  document.getElementById('lockTitle').classList.add('error');
+  setTimeout(()=>{el.classList.remove('error');document.getElementById('lockTitle').classList.remove('error');},400);
+}
+
+function showLockError(msg){
+  document.getElementById('lockTitle').textContent=msg;
+  document.getElementById('lockTitle').classList.add('error');
+  setTimeout(()=>document.getElementById('lockTitle').classList.remove('error'),1000);
+}
+
+function toggleEye(){
+  const input=document.getElementById('masterInput');
+  const btn=document.getElementById('eyeBtn');
+  if(input.type==='password'){
+    input.type='text';
+    btn.textContent='🙈';
+  } else {
+    input.type='password';
+    btn.textContent='👁';
+  }
+}
+
+function showMaster(){
+  document.getElementById('masterWrap').classList.add('show');
+  setTimeout(()=>document.getElementById('masterInput').focus(),100);
+}
+
+function submitMaster(){
+  const input=document.getElementById('masterInput').value.trim();
+  const mode=document.getElementById('masterInput').dataset.mode;
+  if(!input){showToast('마스터키를 입력해주세요');return;}
+
+  if(mode==='setup'){
+    if(input.length<4){showToast('4자 이상 입력해주세요');return;}
+    localStorage.setItem(MKEY, hashPin(input));
+    document.getElementById('masterInput').value='';
+    hideLockScreen();
+    // 화면 복구
+    document.getElementById('lockInput').style.display='';
+    document.querySelector('.lock-submit').style.display='';
+    document.getElementById('masterWrap').classList.remove('show');
+    initDashboard();
+    showToast('✓ 비밀번호와 마스터키가 설정됐어요!');
+  } else {
+    const stored=localStorage.getItem(MKEY);
+    if(hashPin(input)===stored){
+      localStorage.removeItem(PKEY);
+      document.getElementById('masterInput').value='';
+      document.getElementById('masterWrap').classList.remove('show');
+      document.getElementById('masterBtn').style.display='none';
+      document.getElementById('lockAttempt').textContent='';
+      document.getElementById('lockInput').disabled=false;
+      document.querySelector('.lock-submit').disabled=false;
+      pinAttempts=0; setupStep=1; setupFirst='';
+      showLockScreen('새 비밀번호를 설정해주세요','STEP 1 / 2 — 새 비밀번호 입력');
+      showToast('✓ 마스터키 확인! 새 비밀번호를 설정해주세요');
+    } else {
+      document.getElementById('masterInput').value='';
+      showToast('마스터키가 틀렸습니다');
+    }
+  }
+}
+
+/* 자동 잠금 타이머 */
+function resetLockTimer(){
+  clearTimeout(lockTimer);
+  lockTimer=setTimeout(()=>{
+    if(localStorage.getItem(PKEY)){
+      document.getElementById('lockInput').style.display='';
+      document.querySelector('.lock-submit').style.display='';
+      document.getElementById('masterWrap').classList.remove('show');
+      document.getElementById('masterBtn').style.display='none';
+      document.getElementById('lockAttempt').textContent='';
+      document.getElementById('lockInput').disabled=false;
+      document.querySelector('.lock-submit').disabled=false;
+      pinAttempts=0;
+      showLockScreen('비밀번호를 입력하세요','');
+    }
+  }, LOCK_TIMEOUT);
+}
+['click','touchstart','mousemove'].forEach(ev=>{
+  document.addEventListener(ev,resetLockTimer,{passive:true});
+});
+
 /* ════════════════ 상태 ════════════════ */
 const SKEY='gfs_v5';
 const OLD=['gfs_v4','gfs_v3','gfs_v2'];
@@ -511,7 +765,7 @@ let pendingAction=null;
 let calYear,calMonth;
 
 /* ════════════════ 초기화 ════════════════ */
-async function init(){
+async function initDashboard(){
   const n=new Date(), dw=['일','월','화','수','목','금','토'];
   document.getElementById('dateBadge').textContent=`${n.getFullYear()}.${z(n.getMonth()+1)}.${z(n.getDate())} (${dw[n.getDay()]})`;
   const t=new Date();
@@ -522,6 +776,11 @@ async function init(){
   calYear=t.getFullYear(); calMonth=t.getMonth();
   render(); renderCalendar();
   if(syncType()){setSyncStatus('ing','⟳ 동기화 중…'); await syncLoad();}
+  resetLockTimer();
+}
+
+function init(){
+  initLock();
 }
 
 /* ════════════════ 유틸 ════════════════ */
@@ -1003,93 +1262,122 @@ function openJournal(){
   html+=`<div class="jp-row"><span class="jp-label">✅ 할 일</span><span class="jp-val">${S.todos.length}건 (완료 ${doneTodos.length}건)</span></div>`;
   if(issues.length)html+=`<div class="jp-row"><span class="jp-label">⚠ 이슈</span><span class="jp-val">${issues.map(i=>i.title).join(' / ')}</span></div>`;
   if(S.cs.length)html+=`<div class="jp-row"><span class="jp-label">📞 CS</span><span class="jp-val">${S.cs.map(c=>c.title).join(' / ')}</span></div>`;
+  if(S.memos.length)html+=`<div class="jp-row"><span class="jp-label">📝 메모</span><span class="jp-val">${S.memos.length}개</span></div>`;
   document.getElementById('journalPreview').innerHTML=html;
+  // 입력칸 초기화
+  ['jGood','jBad','jLearned','jTomorrow'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('journalOverlay').classList.add('open');
 }
 function closeJournal(){document.getElementById('journalOverlay').classList.remove('open');}
 
 function downloadJournal(){
   const today=new Date();
-  const year=today.getFullYear();
-  const month=today.getMonth()+1;
-  const day=today.getDate();
+  const year=today.getFullYear(), month=today.getMonth()+1, day=today.getDate();
   const dw=['일','월','화','수','목','금','토'];
-  const mm=z(month); const dd=z(day);
+  const mm=z(month), dd=z(day);
   const sheetName=`${mm}-${dd}`;
   const dateLabel=`${year}. ${mm}. ${dd}  ${dw[today.getDay()]}`;
-
   const todos=S.todos;
   const issues=S.issues.filter(i=>!i.resolved);
+  const good=document.getElementById('jGood').value;
+  const bad=document.getElementById('jBad').value;
+  const learned=document.getElementById('jLearned').value;
+  const tomorrow=document.getElementById('jTomorrow').value;
 
   const wb=XLSX.utils.book_new();
-  const ws={};
-  const M=[];
 
-  const C=(addr,v,s={})=>{
+  /* ── 유틸 ── */
+  const thin={style:'thin',color:{rgb:'CCCCCC'}};
+  const bd={left:thin,right:thin,top:thin,bottom:thin};
+  const C=(ws,addr,v,s={})=>{
     ws[addr]={v,t:typeof v==='number'?'n':'s',s:{
       font:{name:'맑은 고딕',sz:s.sz||10,bold:s.bold||false},
-      alignment:{horizontal:s.align||'left',vertical:'center',wrapText:s.wrap||false},
+      alignment:{horizontal:s.h||'left',vertical:s.v||'center',wrapText:s.wrap||false},
       fill:s.fill?{fgColor:{rgb:s.fill},patternType:'solid'}:{patternType:'none'},
-      border:s.border?{left:{style:'thin',color:{rgb:'CCCCCC'}},right:{style:'thin',color:{rgb:'CCCCCC'}},top:{style:'thin',color:{rgb:'CCCCCC'}},bottom:{style:'thin',color:{rgb:'CCCCCC'}}}:{}
+      border:s.border?bd:{}
     }};
   };
 
-  // 1행
-  M.push({s:{r:0,c:0},e:{r:0,c:5}});
+  /* ── 일별 시트 ── */
+  const ws={};
+  const M=[];
+
+  // 병합셀 (원본 그대로)
+  M.push({s:{r:0,c:0},e:{r:0,c:5}});           // A1:F1
+  M.push({s:{r:1,c:0},e:{r:1,c:3}});            // A2:D2
+  M.push({s:{r:1,c:4},e:{r:1,c:5}});            // E2:F2
+  M.push({s:{r:2,c:0},e:{r:2,c:5}});            // A3:F3
+  M.push({s:{r:16,c:0},e:{r:16,c:5}});          // A17:F17
+  M.push({s:{r:17,c:0},e:{r:19,c:1}});          // A18:B20
+  M.push({s:{r:17,c:2},e:{r:19,c:5}});          // C18:F20
+  M.push({s:{r:20,c:0},e:{r:21,c:1}});          // A21:B22
+  M.push({s:{r:20,c:2},e:{r:21,c:5}});          // C21:F22
+  M.push({s:{r:22,c:0},e:{r:23,c:1}});          // A23:B24
+  M.push({s:{r:22,c:2},e:{r:23,c:5}});          // C23:F24
+  M.push({s:{r:24,c:0},e:{r:25,c:1}});          // A25:B26
+  M.push({s:{r:24,c:2},e:{r:25,c:5}});          // C25:F26
+  M.push({s:{r:26,c:0},e:{r:26,c:5}});          // A27:F27
+  M.push({s:{r:27,c:0},e:{r:28,c:1}});          // A28:B29
+  M.push({s:{r:27,c:2},e:{r:28,c:5}});          // C28:F29
+  M.push({s:{r:29,c:0},e:{r:30,c:1}});          // A30:B31
+  M.push({s:{r:29,c:2},e:{r:30,c:5}});          // C30:F31
+  M.push({s:{r:31,c:0},e:{r:32,c:1}});          // A32:B33
+  M.push({s:{r:31,c:2},e:{r:32,c:5}});          // C32:F33
+  M.push({s:{r:33,c:0},e:{r:34,c:1}});          // A34:B35
+  M.push({s:{r:33,c:2},e:{r:34,c:5}});          // C34:F35
+
   // 2행
-  M.push({s:{r:1,c:0},e:{r:1,c:3}}); M.push({s:{r:1,c:4},e:{r:1,c:5}});
-  C('A2','업무일지',{bold:true,sz:20,fill:'FFFFFF'});
-  C('E2',dateLabel,{align:'right',fill:'FFFFFF'});
+  C(ws,'A2','업무일지',{bold:true,sz:20,fill:'FFFFFFFF',h:'left'});
+  C(ws,'E2',dateLabel,{sz:10,fill:'FFFFFFFF',h:'right'});
   // 3행
-  M.push({s:{r:2,c:0},e:{r:2,c:5}});
-  C('A3','  오늘 한 일',{bold:true,sz:11,fill:'FFFFFF'});
+  C(ws,'A3','  오늘 한 일',{bold:true,sz:11,fill:'FFFFFFFF',h:'left',border:true});
   // 4행
-  [['A','No','center'],['B','분류','center'],['C','업무 내용','center'],['D','세부 내용','center'],['E','상태','center'],['F','비고','center']].forEach(([col,val,al])=>C(`${col}4`,val,{bold:true,fill:'E8E8E8',align:al,border:true}));
-  // 5~16행
+  [['A','No','center'],['B','분류','center'],['C','업무 내용','center'],
+   ['D','세부 내용','center'],['E','상태','center'],['F','비고','center']
+  ].forEach(([col,val,h])=>C(ws,`${col}4`,val,{bold:true,sz:10,fill:'FFE8E8E8',h,border:true}));
+
+  // 5~16행: 할 일
   for(let i=0;i<12;i++){
     const r=i+5;
     if(i<todos.length){
       const t=todos[i];
-      C(`A${r}`,i+1,{align:'center',border:true});
-      C(`B${r}`,t.priority||'',{align:'center',border:true});
-      C(`C${r}`,t.text||'',{border:true});
-      C(`D${r}`,t.detail||'',{wrap:true,border:true});
-      C(`E${r}`,t.done?'완료':'진행중',{align:'center',border:true});
-      C(`F${r}`,t.note||'',{border:true});
-    }else{
-      C(`A${r}`,i+1,{align:'center',border:true});
-      ['B','C','D','E','F'].forEach(col=>C(`${col}${r}`,'',{border:true}));
+      C(ws,`A${r}`,i+1,{h:'center'});
+      C(ws,`B${r}`,t.priority||'',{h:'center',border:true});
+      C(ws,`C${r}`,t.text||'',{border:true});
+      C(ws,`D${r}`,t.detail||'',{wrap:true,border:true});
+      C(ws,`E${r}`,t.done?'완료':'진행중',{h:'center',border:true});
+      C(ws,`F${r}`,t.note||'',{border:true});
+    } else {
+      C(ws,`A${r}`,i+1,{h:'center'});
+      ['B','C','D','E','F'].forEach(col=>C(ws,`${col}${r}`,'',{border:true}));
     }
   }
-  // 17행 변수/이슈
-  M.push({s:{r:16,c:0},e:{r:16,c:5}});
-  C('A17','  오늘의 변수 / 이슈',{bold:true,sz:11,fill:'FFFFFF'});
 
-  const situation=document.getElementById('jSituation').value||[...issues.map(i=>i.title),...S.cs.map(c=>`[${c.status}] ${c.title}`)].join('\n');
-  const issueBlocks=[['상황',situation,17,19],['원인',document.getElementById('jCause').value,20,21],['대응',document.getElementById('jResponse').value,22,23],['다음엔',document.getElementById('jNextTime').value,24,25]];
-  issueBlocks.forEach(([label,val,rs,re])=>{
-    M.push({s:{r:rs,c:0},e:{r:re,c:1}}); M.push({s:{r:rs,c:2},e:{r:re,c:5}});
-    C(`A${rs+1}`,label,{bold:true,fill:'E8E8E8',align:'center',border:true});
-    C(`C${rs+1}`,val||'',{wrap:true,fill:'FFFFFF',border:true});
+  // 17행: 변수/이슈
+  C(ws,'A17','  오늘의 변수 / 이슈',{bold:true,sz:11,fill:'FFFFFFFF',h:'left',border:true});
+  const situation=[...issues.map(i=>i.title),...S.cs.map(c=>`[${c.status}] ${c.title}`)].join('\n');
+  [['상황',situation,'18'],['원인','','21'],['대응','','23'],['다음엔','','25']].forEach(([label,val,row])=>{
+    C(ws,`A${row}`,label,{bold:true,sz:10,fill:'FFE8E8E8',h:'center',border:true});
+    C(ws,`C${row}`,val,{sz:10,fill:'FFFFFFFF',h:'left',wrap:true,border:true});
   });
 
-  // 오늘 하루
-  M.push({s:{r:26,c:0},e:{r:26,c:5}});
-  C('A27','  오늘 하루',{bold:true,fill:'FFFFFF'});
-  const dayBlocks=[['잘한 것',document.getElementById('jGood').value,27,28],['아쉬운 것',document.getElementById('jBad').value,29,30],['배운 것',document.getElementById('jLearned').value,31,32],['내일 챙길 것',document.getElementById('jTomorrow').value,33,34]];
-  dayBlocks.forEach(([label,val,rs,re])=>{
-    M.push({s:{r:rs,c:0},e:{r:re,c:1}}); M.push({s:{r:rs,c:2},e:{r:re,c:5}});
-    C(`A${rs+1}`,label,{bold:true,fill:'E8E8E8',align:'center',border:true});
-    C(`C${rs+1}`,val||'',{wrap:true,fill:'FFFFFF',border:true});
+  // 27행: 오늘 하루
+  C(ws,'A27','  오늘 하루',{bold:true,sz:10,fill:'FFFFFFFF',h:'left'});
+  [['잘한 것',good,'28'],['아쉬운 것',bad,'30'],['배운 것',learned,'32'],['내일 챙길 것',tomorrow,'34']].forEach(([label,val,row])=>{
+    C(ws,`A${row}`,label,{bold:true,sz:10,fill:'FFE8E8E8',h:'center',border:true});
+    C(ws,`C${row}`,val||'',{sz:10,fill:'FFFFFFFF',h:'left',wrap:true,border:true});
   });
 
-  ws['!ref']='A1:F35';
+  ws['!ref']=`A1:F35`;
   ws['!merges']=M;
-  ws['!cols']=[{wch:5},{wch:12},{wch:30},{wch:40},{wch:10},{wch:19}];
-  ws['!rows']=[{hpx:5},{hpx:42},{hpx:22},{hpx:20},...Array(12).fill({hpx:26}),...Array(20).fill({hpx:26})];
+  ws['!cols']=[{wch:5},{wch:12},{wch:29.14},{wch:40.28},{wch:10},{wch:19}];
+  const rowH=[5.1,42,21.95,20.1,...Array(12).fill(26.1),21.95,
+    33.95,33.95,27.95,27.95,27.95,27.95,27.95,27.95,21.95,
+    30,30,30,30,30,30,30,30,5.1];
+  ws['!rows']=rowH.map(h=>({hpx:h}));
   XLSX.utils.book_append_sheet(wb,ws,sheetName);
 
-  // 일정 시트
+  /* ── 일정 시트 ── */
   const schedRows=[['일정 관리','','','',''],['날짜','요일','거래처','내용','완료']];
   const dowMap=['일','월','화','수','목','금','토'];
   S.schedules.forEach(s=>{
@@ -1100,20 +1388,27 @@ function downloadJournal(){
   ws2['!cols']=[{wch:8},{wch:5},{wch:15},{wch:40},{wch:8}];
   XLSX.utils.book_append_sheet(wb,ws2,'일정');
 
-  // 실수 기록 시트
+  /* ── 실수 기록 시트 ── */
   const mistakeRows=[['실수 기록','','','',`${year}년 ${mm}월`,''],['날짜','실수 유형','상황 요약','원인','수습','재발']];
-  issues.forEach(iss=>mistakeRows.push([`${year}-${mm}-${dd}`,'이슈',iss.title,document.getElementById('jCause').value||'','진행중','첫발생']));
+  issues.forEach(iss=>mistakeRows.push([`${year}-${mm}-${dd}`,'이슈',iss.title||'','','진행중','첫발생']));
   const ws3=XLSX.utils.aoa_to_sheet(mistakeRows);
   ws3['!cols']=[{wch:12},{wch:12},{wch:35},{wch:35},{wch:8},{wch:8}];
   XLSX.utils.book_append_sheet(wb,ws3,'실수 기록');
+
+  /* ── 메모 시트 ── */
+  const memoRows=[['메모','',''],['내용','날짜','고정']];
+  S.memos.forEach(m=>memoRows.push([m.text||'',m.date||'',m.pin?'📌':'']));
+  const ws4=XLSX.utils.aoa_to_sheet(memoRows);
+  ws4['!cols']=[{wch:60},{wch:12},{wch:8}];
+  XLSX.utils.book_append_sheet(wb,ws4,'메모');
 
   XLSX.writeFile(wb,`업무일지_${year}_${mm}.xlsx`);
   closeJournal();
   showToast(`📥 업무일지_${year}_${mm}.xlsx 다운로드 완료!`);
 }
-
 /* ════════════════ 단축키 ════════════════ */
 document.addEventListener('keydown',e=>{
+  if(document.getElementById('lockScreen').classList.contains('show'))return;
   if(e.key==='Escape'){closeConfirm();closeGist();closeJournal();return;}
   if(e.shiftKey&&e.key==='N'){e.preventDefault();document.getElementById('issueInput').focus();}
   if(e.shiftKey&&e.key==='T'){e.preventDefault();document.getElementById('todoInput').focus();}
@@ -1130,7 +1425,9 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 
 /* ════════════════ 홈화면 캐시 대응 ════════════════ */
 document.addEventListener('visibilitychange',async()=>{
-  if(document.visibilityState==='visible'){if(syncType())await syncLoad();}
+  if(document.visibilityState==='visible'){
+    if(syncType()&&!document.getElementById('lockScreen').classList.contains('show'))await syncLoad();
+  }
 });
 
 setInterval(()=>{autoSync();},180000);
