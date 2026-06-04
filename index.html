@@ -341,7 +341,7 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
     </div>
     <div class="qbar">
       <input class="qinput" id="todoInput" placeholder="할 일 입력 후 Enter…" onkeydown="qa('todo',event)" autocomplete="off">
-      <select class="qsel" id="todoPri"><option value="높음">🔴 높음</option><option value="보통" selected>🟡 보통</option><option value="낮음">⚪ 낮음</option></select>
+      <select class="qsel" id="todoPri"><option value="입고">📦 입고</option><option value="출고" selected>🚚 출고</option><option value="기타">📌 기타</option></select>
     </div>
     <div class="panel-body" id="todoList"></div>
     <div id="upcomingSection" style="display:none;">
@@ -744,7 +744,7 @@ function renderTodos(){
   document.getElementById('todoCnt').textContent=S.todos.filter(i=>!i.done).length;
   if(!S.todos.length){list.innerHTML='<div class="empty">Enter로 바로 추가</div>';return;}
   S.todos.forEach((item,idx)=>{
-    const pc=item.priority==='높음'?'t-h':item.priority==='보통'?'t-m':'t-l';
+    const pc=item.priority==='입고'?'t-h':item.priority==='출고'?'t-m':'t-l';
     const d=document.createElement('div');d.className='todo-item';
     d.innerHTML=`<div class="chk ${item.done?'on':''}" onclick="toggleTodo(${idx})"></div>
       <div class="todo-txt ${item.done?'done':''}">${esc(item.text)}</div>
