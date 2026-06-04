@@ -437,23 +437,43 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
   </div>
 </div>
 
-<!-- Gist 설정 팝업 -->
+<!-- 동기화 설정 팝업 -->
 <div class="overlay" id="gistOverlay">
   <div class="popup-box" id="gistBox">
-    <div class="gist-title">🔗 Gist 연동 설정</div>
-    <div class="gist-field">
-      <label class="gist-label">Gist ID</label>
-      <input id="gistIdInput" type="text" class="gist-input" placeholder="28c44521e0443e28e58d7ef71ad77012" autocomplete="off">
+    <div class="gist-title">🔗 동기화 설정</div>
+
+    <!-- 탭 선택 -->
+    <div style="display:flex;gap:0;margin-bottom:16px;border:1.5px solid var(--border);border-radius:7px;overflow:hidden;">
+      <button id="tabGist" onclick="switchSyncTab('gist')" style="flex:1;padding:8px;font-size:12px;font-weight:600;font-family:'Noto Sans KR',sans-serif;border:none;cursor:pointer;background:#1d4ed8;color:#fff;transition:all .15s;">GitHub Gist</button>
+      <button id="tabGas" onclick="switchSyncTab('gas')" style="flex:1;padding:8px;font-size:12px;font-weight:600;font-family:'Noto Sans KR',sans-serif;border:none;cursor:pointer;background:var(--surface2);color:var(--text2);transition:all .15s;">Google Apps Script</button>
     </div>
-    <div class="gist-field">
-      <label class="gist-label">Personal Access Token <span style="color:var(--text4);font-weight:400;">(gist 권한)</span></label>
-      <input id="gistTokenInput" type="password" class="gist-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
-      <div class="gist-note">⚠ 토큰은 이 기기 브라우저에만 저장됩니다.</div>
+
+    <!-- Gist 설정 -->
+    <div id="panelGist">
+      <div class="gist-field">
+        <label class="gist-label">Gist ID</label>
+        <input id="gistIdInput" type="text" class="gist-input" placeholder="28c44521e0443e28e58d7ef71ad77012" autocomplete="off">
+      </div>
+      <div class="gist-field">
+        <label class="gist-label">Personal Access Token <span style="color:var(--text4);font-weight:400;">(gist 권한)</span></label>
+        <input id="gistTokenInput" type="password" class="gist-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+        <div class="gist-note">⚠ 토큰은 이 기기 브라우저에만 저장됩니다.</div>
+      </div>
     </div>
+
+    <!-- Google Apps Script 설정 -->
+    <div id="panelGas" style="display:none;">
+      <div class="gist-field">
+        <label class="gist-label">Apps Script 웹앱 URL</label>
+        <input id="gasUrlInput" type="text" class="gist-input" placeholder="https://script.google.com/macros/s/..." autocomplete="off">
+        <div class="gist-note">⚠ URL은 이 기기 브라우저에만 저장됩니다.<br>회사 PC에서도 Google은 대부분 허용돼요!</div>
+      </div>
+    </div>
+
     <div class="gist-btns">
       <button class="btn-cancel" onclick="closeGist()">취소</button>
-      <button class="btn-disconnect" onclick="clearGist()">연결 해제</button>
-      <button class="btn-connect" onclick="saveGist()">저장 · 연결 테스트</button>
+      <button class="btn-disconnect" onclick="clearSync()">연결 해제</button>
+      <button class="btn-connect" onclick="saveSync()">저장 · 연결 테스트</button>
     </div>
   </div>
 </div>
@@ -486,7 +506,6 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
 /* ════════════════ 상태 ════════════════ */
 const SKEY='gfs_v5';
 const OLD=['gfs_v4','gfs_v3','gfs_v2'];
-const GKEY='gfs_gist_cfg';
 let S={todos:[],issues:[],cs:[],schedules:[],memos:[]};
 let pendingAction=null;
 let calYear,calMonth;
@@ -502,8 +521,7 @@ async function init(){
   }
   calYear=t.getFullYear(); calMonth=t.getMonth();
   render(); renderCalendar();
-  const cfg=gistCfg();
-  if(cfg){setSyncStatus('ing','⟳ 동기화 중…'); await gistLoad();}
+  if(syncType()){setSyncStatus('ing','⟳ 동기화 중…'); await syncLoad();}
 }
 
 /* ════════════════ 유틸 ════════════════ */
@@ -511,8 +529,6 @@ const z=n=>String(n).padStart(2,'0');
 const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
 const today$=()=>{const d=new Date();return `${d.getFullYear()}.${z(d.getMonth()+1)}.${z(d.getDate())}`;};
 const save=()=>localStorage.setItem(SKEY,JSON.stringify(S));
-const autoSync=()=>{save();const cfg=gistCfg();if(cfg){setSyncStatus('ing','⟳ 저장 중…');gistPush();}};
-
 /* ════════════════ 확인 팝업 ════════════════ */
 function openConfirm(msg,okClass,action){
   pendingAction=action;
@@ -525,29 +541,110 @@ function closeConfirm(){pendingAction=null;document.getElementById('confirmOverl
 function confirmOk(){if(pendingAction)pendingAction();closeConfirm();}
 
 /* ════════════════ Gist ════════════════ */
+/* ════════════════ 동기화 설정 ════════════════ */
+const GKEY='gfs_gist_cfg';
+const GASKEY='gfs_gas_cfg';
+
 const gistCfg=()=>{try{const v=localStorage.getItem(GKEY);return v?JSON.parse(v):null;}catch(e){return null;}};
-const gistSave=cfg=>localStorage.setItem(GKEY,JSON.stringify(cfg));
+const gasCfg=()=>{try{const v=localStorage.getItem(GASKEY);return v?JSON.parse(v):null;}catch(e){return null;}};
+const syncType=()=>gasCfg()?'gas':gistCfg()?'gist':null;
+
 function setSyncStatus(t,m){const el=document.getElementById('syncStatus');el.className='sync-badge sync-'+t;el.textContent=m;}
 
+/* 탭 전환 */
+function switchSyncTab(tab){
+  document.getElementById('panelGist').style.display=tab==='gist'?'block':'none';
+  document.getElementById('panelGas').style.display=tab==='gas'?'block':'none';
+  document.getElementById('tabGist').style.background=tab==='gist'?'#1d4ed8':'var(--surface2)';
+  document.getElementById('tabGist').style.color=tab==='gist'?'#fff':'var(--text2)';
+  document.getElementById('tabGas').style.background=tab==='gas'?'#1d4ed8':'var(--surface2)';
+  document.getElementById('tabGas').style.color=tab==='gas'?'#fff':'var(--text2)';
+}
+
 function openGist(){
-  const cfg=gistCfg();
-  if(cfg){document.getElementById('gistIdInput').value=cfg.id||'';document.getElementById('gistTokenInput').value=cfg.token||'';}
+  const gas=gasCfg();
+  const gist=gistCfg();
+  if(gas){
+    switchSyncTab('gas');
+    document.getElementById('gasUrlInput').value=gas.url||'';
+  } else if(gist){
+    switchSyncTab('gist');
+    document.getElementById('gistIdInput').value=gist.id||'';
+    document.getElementById('gistTokenInput').value=gist.token||'';
+  } else {
+    switchSyncTab('gas'); // 기본값 GAS
+  }
   document.getElementById('gistOverlay').classList.add('open');
 }
 function closeGist(){document.getElementById('gistOverlay').classList.remove('open');}
-async function saveGist(){
-  const id=document.getElementById('gistIdInput').value.trim();
-  const token=document.getElementById('gistTokenInput').value.trim();
-  if(!id||!token){showToast('Gist ID와 Token을 모두 입력해주세요');return;}
-  gistSave({id,token}); closeGist();
-  setSyncStatus('ing','⟳ 연결 테스트 중…');
-  const ok=await gistLoad();
-  if(ok)showToast('✓ Gist 연결 성공!');
+
+async function saveSync(){
+  const gasUrl=document.getElementById('gasUrlInput').value.trim();
+  const gistId=document.getElementById('gistIdInput').value.trim();
+  const gistToken=document.getElementById('gistTokenInput').value.trim();
+
+  // 현재 선택된 탭 확인
+  const isGasTab=document.getElementById('panelGas').style.display!=='none';
+
+  if(isGasTab){
+    if(!gasUrl){showToast('Apps Script URL을 입력해주세요');return;}
+    localStorage.setItem(GASKEY,JSON.stringify({url:gasUrl}));
+    localStorage.removeItem(GKEY);
+    closeGist();
+    setSyncStatus('ing','⟳ 연결 테스트 중…');
+    const ok=await gasLoad();
+    if(ok)showToast('✓ Google Apps Script 연결 성공!');
+  } else {
+    if(!gistId||!gistToken){showToast('Gist ID와 Token을 모두 입력해주세요');return;}
+    localStorage.setItem(GKEY,JSON.stringify({id:gistId,token:gistToken}));
+    localStorage.removeItem(GASKEY);
+    closeGist();
+    setSyncStatus('ing','⟳ 연결 테스트 중…');
+    const ok=await gistLoad();
+    if(ok)showToast('✓ Gist 연결 성공!');
+  }
 }
-function clearGist(){
-  localStorage.removeItem(GKEY); closeGist();
-  setSyncStatus('none','⚙ Gist 미연결'); showToast('Gist 연결이 해제됐어요');
+
+function clearSync(){
+  localStorage.removeItem(GKEY);
+  localStorage.removeItem(GASKEY);
+  closeGist();
+  setSyncStatus('none','⚙ 동기화 미연결');
+  showToast('연결이 해제됐어요');
 }
+
+/* ── Google Apps Script ── */
+async function gasLoad(){
+  const cfg=gasCfg();if(!cfg)return false;
+  try{
+    const res=await fetch(cfg.url);
+    if(!res.ok)throw new Error(res.status);
+    const text=await res.text();
+    const data=JSON.parse(text);
+    if(data&&Object.keys(data).length>0){
+      S={todos:[],issues:[],cs:[],schedules:[],memos:[],...data};
+      save();render();renderCalendar();
+    }
+    setSyncStatus('ok','✓ GAS 연결됨'); return true;
+  }catch(e){setSyncStatus('err','✗ 연결 오류');showToast('GAS 연결 실패: '+e.message);return false;}
+}
+
+async function gasPush(){
+  const cfg=gasCfg();if(!cfg)return false;
+  try{
+    const res=await fetch(cfg.url,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify(S)
+    });
+    if(!res.ok)throw new Error(res.status);
+    const result=await res.json();
+    if(!result.ok)throw new Error(result.error);
+    setSyncStatus('ok','✓ GAS 동기화됨'); return true;
+  }catch(e){setSyncStatus('err','✗ 저장 오류');return false;}
+}
+
+/* ── Gist ── */
 async function gistLoad(){
   const cfg=gistCfg();if(!cfg)return false;
   try{
@@ -563,6 +660,7 @@ async function gistLoad(){
     setSyncStatus('ok','✓ Gist 연결됨'); return true;
   }catch(e){setSyncStatus('err','✗ 연결 오류');showToast('Gist 연결 실패');return false;}
 }
+
 async function gistPush(){
   const cfg=gistCfg();if(!cfg)return false;
   try{
@@ -571,18 +669,39 @@ async function gistPush(){
     setSyncStatus('ok','✓ Gist 동기화됨'); return true;
   }catch(e){setSyncStatus('err','✗ 저장 오류');return false;}
 }
+
+/* ── 공통 동기화 ── */
+async function syncLoad(){
+  if(gasCfg())return await gasLoad();
+  if(gistCfg())return await gistLoad();
+  return false;
+}
+async function syncPush(){
+  if(gasCfg())return await gasPush();
+  if(gistCfg())return await gistPush();
+  return false;
+}
+
 async function manualRefresh(){
-  const cfg=gistCfg();if(!cfg){showToast('Gist 먼저 연결해주세요');return;}
+  if(!syncType()){showToast('동기화 설정을 먼저 해주세요');return;}
   setSyncStatus('ing','⟳ 불러오는 중…');
-  const ok=await gistLoad();
+  const ok=await syncLoad();
   if(ok)showToast('🔄 최신 데이터 불러왔어요 ✓');
 }
+
 async function saveAll(){
   save();
-  const cfg=gistCfg();
-  if(cfg){setSyncStatus('ing','⟳ 저장 중…');const ok=await gistPush();if(ok)showToast('💾 저장·동기화 완료 ✓');else showToast('💾 로컬 저장됨 (Gist 오류)');}
-  else showToast('💾 로컬 저장됐어요');
+  if(syncType()){
+    setSyncStatus('ing','⟳ 저장 중…');
+    const ok=await syncPush();
+    if(ok)showToast('💾 저장·동기화 완료 ✓');
+    else showToast('💾 로컬 저장됨 (동기화 오류)');
+  } else {
+    showToast('💾 로컬 저장됐어요');
+  }
 }
+
+const autoSync=()=>{save();if(syncType()){setSyncStatus('ing','⟳ 저장 중…');syncPush();}};
 
 /* ════════════════ 입력 ════════════════ */
 function qa(type,e){
@@ -1011,7 +1130,7 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 
 /* ════════════════ 홈화면 캐시 대응 ════════════════ */
 document.addEventListener('visibilitychange',async()=>{
-  if(document.visibilityState==='visible'){const cfg=gistCfg();if(cfg)await gistLoad();}
+  if(document.visibilityState==='visible'){if(syncType())await syncLoad();}
 });
 
 setInterval(()=>{autoSync();},180000);
