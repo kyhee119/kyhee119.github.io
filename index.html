@@ -408,10 +408,10 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
     <span class="kbd">Shift+N 특이사항 · Shift+T 할일 · Shift+M 메모</span>
     <span id="syncStatus" class="sync-badge sync-none">⚙ Gist 미연결</span>
     <span class="date-badge" id="dateBadge"></span>
-    <button class="sync-btn" onclick="openGist()">🔗 Gist 설정</button>
-    <button class="sync-btn" onclick="manualRefresh()">🔄</button>
+    <button class="sync-btn" onclick="openGist()">🔗 동기화 설정</button>
+    <button class="sync-btn" onclick="manualRefresh()" title="GAS에서 최신 데이터 불러오기">🔄 불러오기</button>
     <button class="journal-btn" onclick="openJournal()">📋 업무일지</button>
-    <button class="save-btn" onclick="saveAll()">💾 저장·동기화</button>
+    <button class="save-btn" onclick="saveAll()">💾 GAS에 저장</button>
   </div>
 </div>
 
@@ -612,19 +612,21 @@ function processMidnight(){
   // 해결된 특이사항 자동 삭제
   S.issues=S.issues.filter(i=>!i.resolved);
 
-  // 미완료 할 일 있으면 팝업
+  // 미완료/완료 분리
   const pending=S.todos.filter(t=>!t.done);
   const done=S.todos.filter(t=>t.done);
 
-  // 완료된 할 일 삭제
+  // 완료된 할 일 삭제, 미완료만 유지
   S.todos=pending;
-  save();
 
   if(pending.length>0){
+    // 미완료 있으면 팝업 (저장은 doCarryOver에서)
     openCarryOver(pending);
   } else {
-    // 미완료 없으면 그냥 저장
+    // 미완료 없으면 바로 저장
+    save();
     autoSync();
+    if(done.length>0) showToast(`🌅 완료 항목 ${done.length}건 정리됐어요`);
   }
 }
 
@@ -879,7 +881,9 @@ async function initDashboard(){
     setSyncStatus('ing','⟳ 동기화 중…');
     await syncLoad();
   }
+  // syncLoad 완료 후 이월 체크 (GAS 데이터 기준으로 처리)
   checkMidnight();
+  render(); renderCalendar();
   resetLockTimer();
 }
 
@@ -1055,16 +1059,16 @@ async function manualRefresh(){
 async function saveAll(){
   save();
   if(syncType()){
-    setSyncStatus('ing','⟳ 저장 중…');
+    setSyncStatus('ing','⟳ GAS에 저장 중…');
     const ok=await syncPush();
-    if(ok)showToast('💾 저장·동기화 완료 ✓');
-    else showToast('💾 로컬 저장됨 (동기화 오류)');
+    if(ok)showToast('💾 GAS 저장 완료 ✓');
+    else showToast('💾 로컬 저장됨 (GAS 오류)');
   } else {
     showToast('💾 로컬 저장됐어요');
   }
 }
 
-const autoSync=()=>{save();if(syncType()){setSyncStatus('ing','⟳ 저장 중…');syncPush();}};
+const autoSync=()=>{save();setSyncStatus('ok','✓ 로컬 저장됨');};
 
 /* ════════════════ 입력 ════════════════ */
 function qa(type,e){
@@ -1535,7 +1539,7 @@ document.addEventListener('visibilitychange',async()=>{
   }
 });
 
-setInterval(()=>{autoSync();},180000);
+setInterval(()=>{save();},180000);
 init();
 </script>
 </body>
