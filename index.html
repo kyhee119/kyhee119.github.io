@@ -625,7 +625,7 @@ function processMidnight(){
   } else {
     // 미완료 없으면 바로 저장
     save();
-    autoSync();
+    if(syncType()){setSyncStatus('ing','⟳ 저장 중…');syncPush();}
     if(done.length>0) showToast(`🌅 완료 항목 ${done.length}건 정리됐어요`);
   }
 }
@@ -656,7 +656,7 @@ function openCarryOver(items){
 }
 
 function doCarryOver(){
-  const pending=[...S.todos]; // 복사본 사용
+  const pending=[...S.todos];
   pending.forEach((item,idx)=>{
     const reason=document.getElementById(`carryReason_${idx}`)?.value.trim()||'';
     const title=reason?`[미완료] ${item.text} — ${reason}`:`[미완료] ${item.text}`;
@@ -666,8 +666,7 @@ function doCarryOver(){
   document.getElementById('carryOverlay').classList.remove('open');
   render();
   save();
-  const cfg=syncType();
-  if(cfg){setSyncStatus('ing','⟳ 저장 중…');syncPush();}
+  if(syncType()){setSyncStatus('ing','⟳ 저장 중…');syncPush();}
   showToast(`🌅 ${pending.length}건 이월 완료`);
 }
 const PKEY='gfs_pin';
