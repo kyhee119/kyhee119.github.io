@@ -408,6 +408,8 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
     <span class="kbd">Shift+N 특이사항 · Shift+T 할일 · Shift+M 메모</span>
     <span id="syncStatus" class="sync-badge sync-none">⚙ Gist 미연결</span>
     <span class="date-badge" id="dateBadge"></span>
+    <button class="sync-btn" onclick="exportBackup()" title="현재 데이터를 텍스트 파일로 백업">📤 백업</button>
+    <label class="sync-btn" style="cursor:pointer;" title="백업 파일 불러오기">📥 복원<input type="file" id="restoreFile" accept=".txt,.json" style="display:none" onchange="importBackup(event)"></label>
     <button class="sync-btn" onclick="openGist()">🔗 동기화 설정</button>
     <button class="sync-btn" onclick="manualRefresh()" title="GAS에서 최신 데이터 불러오기">🔄 불러오기</button>
     <button class="journal-btn" onclick="openJournal()">📅 업무일지</button>
@@ -510,16 +512,7 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
 </div>
 
 <!-- 이월 팝업 -->
-<div class="carry-overlay" id="carryOverlay">
-  <div class="carry-box">
-    <div class="carry-title">🌅 미완료 항목 이월</div>
-    <div class="carry-sub" id="carrySub"></div>
-    <div id="carryList"></div>
-    <div class="carry-btns">
-      <button class="btn-carry" onclick="doCarryOver()">이월하기</button>
-    </div>
-  </div>
-</div>
+
 
 <!-- 확인 팝업 -->
 <div class="overlay" id="confirmOverlay">
@@ -616,59 +609,34 @@ function processMidnight(){
   const pending=S.todos.filter(t=>!t.done);
   const done=S.todos.filter(t=>t.done);
 
-  // 완료된 할 일 삭제, 미완료만 유지
-  S.todos=pending;
-
+  // 미완료 → 팝업 없이 특이사항으로 자동 이월
   if(pending.length>0){
-    // 미완료 있으면 팝업 (저장은 doCarryOver에서)
-    openCarryOver(pending);
-  } else {
-    // 미완료 없으면 바로 저장
-    save();
-    if(syncType()){setSyncStatus('ing','⟳ 저장 중…');syncPush();}
-    if(done.length>0) showToast(`🌅 완료 항목 ${done.length}건 정리됐어요`);
+    const yesterday=new Date();
+    yesterday.setDate(yesterday.getDate()-1);
+    const yStr=`${yesterday.getFullYear()}.${z(yesterday.getMonth()+1)}.${z(yesterday.getDate())}`;
+    pending.forEach((item,idx)=>{
+      S.issues.push({
+        title:`[미완료 이월] ${item.text}`,
+        date:yStr,
+        resolved:false,
+        id:Date.now()+idx
+      });
+    });
   }
-}
 
-function openCarryOver(items){
-  const yesterday=new Date();
-  yesterday.setDate(yesterday.getDate()-1);
-  const dw=['일','월','화','수','목','금','토'];
-  document.getElementById('carrySub').textContent=
-    `${yesterday.getMonth()+1}월 ${yesterday.getDate()}일 (${dw[yesterday.getDay()]}) 미완료 항목 ${items.length}건 — 사유를 입력하고 이월해주세요`;
-
-  const list=document.getElementById('carryList');
-  list.innerHTML='';
-  items.forEach((item,idx)=>{
-    const div=document.createElement('div');
-    div.className='carry-item';
-    div.innerHTML=`
-      <div class="carry-item-title">
-        <span class="carry-badge">미완료</span>
-        ${esc(item.text)}
-        <span style="font-size:10px;color:var(--text3);margin-left:auto;">${item.priority||''}</span>
-      </div>
-      <textarea class="carry-textarea" id="carryReason_${idx}" placeholder="미완료 사유 (선택사항)…" rows="2"></textarea>`;
-    list.appendChild(div);
-  });
-
-  document.getElementById('carryOverlay').classList.add('open');
-}
-
-function doCarryOver(){
-  const pending=[...S.todos];
-  pending.forEach((item,idx)=>{
-    const reason=document.getElementById(`carryReason_${idx}`)?.value.trim()||'';
-    const title=reason?`[미완료] ${item.text} — ${reason}`:`[미완료] ${item.text}`;
-    S.issues.push({title,date:today$(),resolved:false,id:Date.now()+idx});
-  });
+  // 할 일 전체 초기화
   S.todos=[];
-  document.getElementById('carryOverlay').classList.remove('open');
+
   render();
   save();
   if(syncType()){setSyncStatus('ing','⟳ 저장 중…');syncPush();}
-  showToast(`🌅 ${pending.length}건 이월 완료`);
+
+  const msgs=[];
+  if(done.length>0) msgs.push(`완료 ${done.length}건 정리`);
+  if(pending.length>0) msgs.push(`미완료 ${pending.length}건 특이사항 이월`);
+  if(msgs.length>0) showToast(`🌅 ${msgs.join(' · ')}`);
 }
+
 const PKEY='gfs_pin';
 const MKEY='gfs_master';
 const LOCK_TIMEOUT=30*60*1000;
@@ -1528,6 +1496,59 @@ document.addEventListener('click',e=>{
 });
 
 /* ════════════════ 토스트 ════════════════ */
+/* ════════════════ 백업 / 복원 ════════════════ */
+function exportBackup(){
+  const now=new Date();
+  const stamp=`${now.getFullYear()}${z(now.getMonth()+1)}${z(now.getDate())}_${z(now.getHours())}${z(now.getMinutes())}`;
+  const payload={
+    _ver:1,
+    _exported:now.toISOString(),
+    todos:S.todos,
+    issues:S.issues,
+    cs:S.cs,
+    schedules:S.schedules,
+    memos:S.memos||[]
+  };
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'text/plain;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`GFS_backup_${stamp}.txt`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('📤 백업 파일 저장됐어요');
+}
+
+function importBackup(e){
+  const file=e.target.files[0];
+  if(!file){return;}
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const data=JSON.parse(ev.target.result);
+      // 필수 키 검증
+      if(!Array.isArray(data.todos)||!Array.isArray(data.issues)||!Array.isArray(data.cs)||!Array.isArray(data.schedules)){
+        showToast('⚠ 올바른 백업 파일이 아닙니다');
+        return;
+      }
+      if(!confirm(`백업 파일을 복원하시겠습니까?\n현재 데이터는 백업 데이터로 교체됩니다.\n\n내보낸 시각: ${data._exported||'알 수 없음'}`)){
+        e.target.value='';return;
+      }
+      S.todos     = data.todos     || [];
+      S.issues    = data.issues    || [];
+      S.cs        = data.cs        || [];
+      S.schedules = data.schedules || [];
+      S.memos     = data.memos     || [];
+      save();
+      render();
+      showToast('📥 복원 완료 ✓');
+    }catch(err){
+      showToast('⚠ 파일을 읽을 수 없습니다');
+    }
+    e.target.value=''; // 같은 파일 재업로드 허용
+  };
+  reader.readAsText(file);
+}
+
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1900);}
 
 /* ════════════════ 홈화면 캐시 대응 ════════════════ */
